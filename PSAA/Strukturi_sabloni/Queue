@@ -1,0 +1,4 @@
+import java.util.LinkedList;
+import java.util.Queue;
+
+Queue<Integer> queue = new LinkedList<Integer>();
