@@ -1,0 +1,136 @@
+#include<linux/module.h>
+#include<linux/init.h>
+#include <linux/fs.h>
+#include <linux/sched.h>
+#include <linux/errno.h>
+#include <asm/current.h>
+#include <asm/segment.h>
+#include <asm/uaccess.h>
+
+#define MEMORY_SIZE 1000*10;
+int rezim;
+char mem[MEMORY_SIZE];
+int content_size=0;
+
+MODULE_AUTHOR("1262022");
+MODULE_DESCRIPTION("OS Driver 2025  zadaca4");
+static int r_init(void);
+static void r_cleanup(void);
+
+module_init(r_init);
+module_exit(r_cleanup);
+
+static int my_open(struct inode *inode,struct file *filep);
+static int my_release(struct inode *inode,struct file *filep);
+static ssize_t my_read(struct file *filep,char *buff,size_t count,loff_t *offp );
+static ssize_t my_write(struct file *filep,const char *buff,size_t count,loff_t *offp );
+
+struct file_operations my_fops={
+	open: my_open,
+	read: my_read,
+	write: my_write,
+	release:my_release,
+};
+
+static int my_open(struct inode *inode, struct file *file)
+{
+printk("my_open: successful\n");
+return 0;
+}
+static int my_release(struct inode *inode, struct file *file)
+{
+printk("hello_release: successful\n");
+return 0;
+}
+static int r_init(void)
+{
+printk("<1>Simple znakoven modul\n");
+if(register_chrdev(60,"zadaca2",&my_fops)){
+	printk("<1>nejke da se registrira\n");
+}
+// inicijalizacija na promenlivi
+w=r=0;
+return 0;
+}
+static void r_cleanup(void)
+{
+printk("<1>Ciao\n");
+unregister_chrdev(60,"zadaca2");
+return ;
+}
+static ssize_t my_read(struct file *file, char *buf,
+size_t count,loff_t *ptr)
+{
+   switch (rezim)
+    {
+    case 1:
+        if(*ptr>content_size){
+            printk("nema vise za citanje"); return 0;
+        }
+
+        if(count>content_size-*ppos){count=content_size-*ppos;}
+        if(copy_to_user(buf,mem+*ptr,count))
+            return -EFAULT;
+        return count;
+        break;
+    case 2:
+        if (*ptr<=0){
+            printk("nema vise za citanje"); return 0;
+        }
+
+        if(*ptr<count){
+            count=*ppos;
+            *ptr=0;
+        }else{
+            *ptr-=count;
+        }
+
+        if(copy_to_user(buf,mem+*ptr,count)){-EFAULT}
+        return count;
+        break;
+    default:
+        int i, randomNumber100;
+        do{
+        get_random_bytes(&i, sizeof(i));
+        randomNumber100 = i % 100;
+        }while(randomNumber100+count>content_size)
+        copy_to_user(buf,mem+randomNumber100,count);
+        return count;
+        break;
+    }
+
+}
+static ssize_t my_write(struct file *file, const char
+*buf, size_t count,
+loff_t * ppos)
+{
+ if(count==1){
+        switch(buf[0]){
+            case '1':
+                rezim=1; 
+                *ppos=0;
+                break;
+            case '2':
+                rezim=2;
+                *ppos=content_size;
+                break;
+            default: break;
+        }
+ }   
+
+if(*ppos>=content_size){
+           *ppos=0;
+        }
+
+if(count>mem-*ppos){
+    count=mem-*ppos;
+}
+
+   if(copy_from_user(mem+*ppos,buf,count)){-EFAULT}
+   *ppos+=count;
+   content_size+=count;
+   return count;
+
+}
+
+MODULE_LICENSE("DUAL BSD/GPL");
